@@ -62,11 +62,11 @@
     .lecture-select-box {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     select {
-      padding: 8px 14px;
+      padding: 8px 12px;
       font-size: 0.95rem;
       font-weight: 600;
       border-radius: 10px;
@@ -103,7 +103,7 @@
       border: 1px solid var(--border);
     }
 
-    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
     button {
       cursor: pointer;
@@ -118,12 +118,26 @@
       gap: 6px;
     }
 
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
     .btn-primary { background-color: var(--primary); color: white; }
     .btn-primary:hover { background-color: var(--primary-hover); }
     .btn-primary.playing { background-color: var(--danger); }
 
     .btn-secondary { background-color: #f1f5f9; color: #334155; }
     .btn-secondary:hover { background-color: #e2e8f0; }
+
+    .btn-nav {
+      background-color: var(--primary-light);
+      color: var(--primary);
+      padding: 8px 12px;
+      font-size: 0.88rem;
+    }
+    .btn-nav:hover { background-color: #dbeafe; }
 
     /* 다이얼로그 카드 */
     .dialogue-list { display: flex; flex-direction: column; gap: 16px; }
@@ -329,8 +343,9 @@
     <div class="header-top">
       <h1 id="lectureTitle">📘 DAY 001 : Look who's here</h1>
       <div class="lecture-select-box">
-        <label for="lectureSelect" style="font-weight:700; font-size:0.9rem; color:#1e3a8a;">강의 선택:</label>
+        <button id="headerPrevBtn" class="btn-nav" onclick="navLecture(-1)" title="이전 강의">◀ 이전</button>
         <select id="lectureSelect" onchange="changeLecture(this.value)"></select>
+        <button id="headerNextBtn" class="btn-nav" onclick="navLecture(1)" title="다음 강의">다음 ▶</button>
       </div>
     </div>
     <p class="desc">한글 문장을 보고 우측 [🎙️ 말하기]를 눌러 영작을 테스트하세요! AI가 음성 인식 후 원문과 비교 분석해 줍니다.</p>
@@ -396,6 +411,23 @@
     select.innerHTML = lectures.map((lec, idx) => `
       <option value="${idx}">${lec.dayFormatted} : ${lec.title}</option>
     `).join("");
+    updateNavButtons();
+  }
+
+  function updateNavButtons() {
+    const prevBtn = document.getElementById("headerPrevBtn");
+    const nextBtn = document.getElementById("headerNextBtn");
+    
+    if (prevBtn) prevBtn.disabled = (currentLectureIndex <= 0);
+    if (nextBtn) nextBtn.disabled = (currentLectureIndex >= lectures.length - 1);
+  }
+
+  function navLecture(delta) {
+    const targetIdx = currentLectureIndex + delta;
+    if (targetIdx >= 0 && targetIdx < lectures.length) {
+      document.getElementById("lectureSelect").value = targetIdx;
+      changeLecture(targetIdx);
+    }
   }
 
   function changeLecture(index) {
@@ -403,6 +435,7 @@
     currentLectureIndex = parseInt(index);
     const lec = lectures[currentLectureIndex];
     document.getElementById("lectureTitle").textContent = `📘 ${lec.dayFormatted} : ${lec.title}`;
+    updateNavButtons();
     renderDialogues();
   }
 
