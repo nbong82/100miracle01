@@ -348,7 +348,7 @@
         <button id="headerNextBtn" class="btn-nav" onclick="navLecture(1)" title="다음 강의">다음 ▶</button>
       </div>
     </div>
-    <p class="desc">한글 문장을 보고 우측 [🎙️ 말하기]를 눌러 영작을 테스트하세요! AI가 음성 인식 후 원문과 비교 분석해 줍니다.</p>
+    <p class="desc">한글 문장을 보고 [🎙️ 말하기]를 눌러 영작을 말해보세요. 3초간 말이 없거나 [⏹️ 완료]를 누르면 AI가 즉시 비교 분석합니다.</p>
     <div id="voiceStatus" class="voice-status">음성 엔진 준비 중...</div>
   </header>
 
@@ -377,12 +377,15 @@
   let maleVoice = null;
   let recognition = null;
   let activeRecordingIdx = null;
+  let speechSilenceTimer = null;
+  let accumulatedTranscript = "";
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SpeechRecognition) {
     recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.maxAlternatives = 1;
   }
 
@@ -417,7 +420,6 @@
   function updateNavButtons() {
     const prevBtn = document.getElementById("headerPrevBtn");
     const nextBtn = document.getElementById("headerNextBtn");
-    
     if (prevBtn) prevBtn.disabled = (currentLectureIndex <= 0);
     if (nextBtn) nextBtn.disabled = (currentLectureIndex >= lectures.length - 1);
   }
@@ -480,7 +482,7 @@
               <span>🗣️ 내 발화 분석 결과</span>
               <span class="score-badge" id="score-${idx}">일치도: -%</span>
             </div>
-            <div class="speech-transcript" id="transcript-${idx}">인식된 문장: </div>
+            <div class="speech-transcript" id="transcript-${idx}">인식 중...</div>
             <div class="diff-box" id="diff-${idx}"></div>
           </div>
 
@@ -601,32 +603,75 @@
     }
 
     if (activeRecordingIdx !== null) {
-      recognition.stop();
+      if (activeRecordingIdx === idx) {
+        finishSpeaking(idx);
+      } else {
+        recognition.stop();
+      }
       return;
     }
 
     activeRecordingIdx = idx;
+    accumulatedTranscript = "";
+    if (speechSilenceTimer) clearTimeout(speechSilenceTimer);
+
     const btn = document.getElementById(`rec-btn-${idx}`);
     btn.classList.add("recording");
-    btn.innerHTML = "🔴 듣는 중...";
+    btn.innerHTML = "⏹️ 말하기 완료";
+
+    const panel = document.getElementById(`analysis-${idx}`);
+    panel.classList.add("show");
+    document.getElementById(`transcript-${idx}`).innerHTML = `<strong>인식 중...</strong> <span style="color:#2563eb;">말씀해 보세요.</span>`;
 
     recognition.onresult = (event) => {
-      const userSpoken = event.results[0][0].transcript;
-      analyzeSpeech(idx, userSpoken);
+      let interim = "";
+      let final = "";
+
+      for (let i = 0; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          final += event.results[i][0].transcript + " ";
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+
+      accumulatedTranscript = (final + interim).trim();
+      document.getElementById(`transcript-${idx}`).innerHTML = `<strong>인식된 문장:</strong> "${accumulatedTranscript}"`;
+
+      if (speechSilenceTimer) clearTimeout(speechSilenceTimer);
+      speechSilenceTimer = setTimeout(() => {
+        finishSpeaking(idx);
+      }, 3000);
     };
 
     recognition.onerror = (event) => {
       console.error(event.error);
-      alert("음성 인식 오류: " + event.error);
+      if (event.error !== "no-speech") {
+        alert("음성 인식 오류: " + event.error);
+      }
       resetRecButton(idx);
+      activeRecordingIdx = null;
     };
 
     recognition.onend = () => {
+      if (activeRecordingIdx !== null && accumulatedTranscript) {
+        analyzeSpeech(idx, accumulatedTranscript);
+      }
       resetRecButton(idx);
       activeRecordingIdx = null;
     };
 
     recognition.start();
+  }
+
+  function finishSpeaking(idx) {
+    if (speechSilenceTimer) clearTimeout(speechSilenceTimer);
+    recognition.stop();
+    resetRecButton(idx);
+    if (accumulatedTranscript) {
+      analyzeSpeech(idx, accumulatedTranscript);
+    }
+    activeRecordingIdx = null;
   }
 
   function resetRecButton(idx) {
