@@ -4,6 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>영어회화 100일의 기적 1권 - AI 말하기 트레이너</title>
+  <!-- PWA 매니페스트 및 모바일 테마 설정 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0284c7">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <!-- 서비스 워커 등록 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('영어 1권 SW 등록 성공:', reg.scope))
+          .catch(err => console.log('영어 1권 SW 등록 실패:', err));
+      });
+    }
+  </script>
   <style>
     :root {
       --primary: #2563eb;
